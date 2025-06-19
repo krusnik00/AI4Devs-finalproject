@@ -16,7 +16,7 @@ import MainLayout from './layouts/MainLayout';
 // Components
 import Dashboard from './components/Dashboard';
 import PuntoVenta from './components/PuntoVenta';
-import Login from './components/Login';
+import Login from './components/Login'; // Ya está apuntando al Login correcto
 import ClientesList from './components/ClientesList';
 import ClienteDetalle from './components/ClienteDetalle';
 import ClienteHistorial from './components/ClienteHistorial';
@@ -36,36 +36,32 @@ function App() {
   return (
     <ChakraProvider theme={theme}>
       <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected Routes with MainLayout */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Dashboard />} />
-            <Route path="ventas/pos" element={<PuntoVenta />} />
-              {/* Customer Management Routes */}
-            <Route path="clientes">
-              <Route index element={<ClientesList />} />
-              <Route path=":id" element={<ClienteDetalle />} />
-              <Route path=":id/historial" element={<ClienteHistorial />} />
-            </Route>
+        <Box minH="100vh">
+          <Routes>
+            {/* Ruta de login pública */}
+            <Route path="/login" element={
+              isAuthenticated() ? <Navigate to="/" /> : <Login />
+            } />
             
-            {/* Returns and Exchanges Routes */}
-            <Route path="devoluciones">
-              <Route index element={<DevolucionesList />} />
-              <Route path="nueva" element={<DevolucionForm />} />
-              <Route path=":id" element={<DevolucionDetalle />} />
+            {/* Rutas protegidas dentro del layout principal */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Dashboard />} />
+              <Route path="punto-venta" element={<PuntoVenta />} />
+              <Route path="clientes" element={<ClientesList />} />
+              <Route path="clientes/:id" element={<ClienteDetalle />} />
+              <Route path="clientes/:id/historial" element={<ClienteHistorial />} />
+              <Route path="devoluciones" element={<DevolucionesList />} />
+              <Route path="devoluciones/nueva" element={<DevolucionForm />} />
+              <Route path="devoluciones/:id" element={<DevolucionDetalle />} />
+              {/* Redirigir rutas no encontradas al dashboard */}
+              <Route path="*" element={<Navigate to="/" />} />
             </Route>
-            
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/" />} />
-          </Route>
-        </Routes>
+          </Routes>
+        </Box>
       </Router>
     </ChakraProvider>
   );

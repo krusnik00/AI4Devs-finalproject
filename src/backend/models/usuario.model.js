@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
-const bcrypt = require('bcryptjs');
+const bcryptjs = require('bcryptjs');
 
 const Usuario = sequelize.define('Usuario', {
   id: {
@@ -22,7 +22,13 @@ const Usuario = sequelize.define('Usuario', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    set(value) {
+      // Hash la contraseña antes de guardarla
+      const salt = bcryptjs.genSaltSync(10);
+      const hash = bcryptjs.hashSync(value, salt);
+      this.setDataValue('password', hash);
+    }
   },
   rol: {
     type: DataTypes.ENUM('admin', 'vendedor', 'almacen'),
@@ -34,26 +40,12 @@ const Usuario = sequelize.define('Usuario', {
   }
 }, {
   timestamps: true,
-  tableName: 'usuarios',
-  hooks: {
-    beforeCreate: async (usuario) => {
-      if (usuario.password) {
-        const salt = await bcrypt.genSalt(10);
-        usuario.password = await bcrypt.hash(usuario.password, salt);
-      }
-    },
-    beforeUpdate: async (usuario) => {
-      if (usuario.changed('password')) {
-        const salt = await bcrypt.genSalt(10);
-        usuario.password = await bcrypt.hash(usuario.password, salt);
-      }
-    }
-  }
+  tableName: 'usuarios'
 });
 
 // Método para verificar contraseña
-Usuario.prototype.verificarPassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
+Usuario.prototype.verificarPassword = function(password) {
+  return bcryptjs.compareSync(password, this.password);
 };
 
 module.exports = Usuario;

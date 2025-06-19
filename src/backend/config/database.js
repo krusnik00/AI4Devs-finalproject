@@ -6,7 +6,7 @@ dotenv.config();
 // Crear instancia de Sequelize con SQLite para desarrollo
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: './database.sqlite',
+  storage: __dirname + '/../database.sqlite',
   logging: process.env.NODE_ENV === 'development' ? console.log : false
 });
 

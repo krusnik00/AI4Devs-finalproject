@@ -116,7 +116,7 @@ El diagrama de arquitectura se ha creado como un diagrama de Mermaid mostrando l
 3. **Base de Datos (MySQL)**:
    - Tablas principales: Productos, Ventas, Compras, Usuarios, Proveedores, Clientes
 
-El diagrama muestra claramente el flujo de datos entre las capas y cómo los módulos de IA se integran con los servicios existentes, acceden a los datos históricos y devuelven resultados al frontend.
+El diagrama muestra claramente el flujo de datos entre las capas y cómo los módulos de IA se integran con los servicios
 
 [Ver diagrama completo en /src/docs/diagrama_arquitectura.md]
 

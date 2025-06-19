@@ -1,6 +1,6 @@
 const { Usuario } = require('../models');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 
 // Variable de entorno JWT_SECRET o una clave por defecto
 const JWT_SECRET = process.env.JWT_SECRET || 'clave_secreta_desarrollo_automotriz';
@@ -8,44 +8,54 @@ const JWT_SECRET = process.env.JWT_SECRET || 'clave_secreta_desarrollo_automotri
 // Login de usuario
 exports.login = async (req, res) => {
   try {
+    console.log('Iniciando proceso de login...');
     const { email, password } = req.body;
+    console.log('Datos recibidos:', { email, password: '***' });
     
     // Validar entradas
     if (!email || !password) {
+      console
       return res.status(400).json({
         message: 'Email y contraseña son requeridos'
       });
     }
     
     // Buscar usuario por correo
+    console.log('Buscando usuario con email:', email);
     const usuario = await Usuario.findOne({ 
-      where: { correo: email }
+      where: { email }
     });
     
     // Verificar si el usuario existe
     if (!usuario) {
+      console.log('Error: Usuario no encontrado');
       return res.status(401).json({
         message: 'Credenciales inválidas'
       });
     }
     
+    console.log('Usuario encontrado:', { id: usuario.id, nombre: usuario.nombre, email: usuario.email });
+    
     // Verificar si el usuario está activo
     if (!usuario.activo) {
+      console.log('Error: Usuario desactivado');
       return res.status(401).json({
         message: 'Usuario desactivado. Contacte al administrador'
       });
-    }
-    
-    // Verificar contraseña
-    const passwordEsValida = await bcrypt.compare(password, usuario.password);
+    }    // Verificar contraseña
+    console.log('Verificando contraseña...');
+    const passwordEsValida = usuario.verificarPassword(password);
+    console.log('Resultado de verificación de contraseña:', passwordEsValida);
     
     if (!passwordEsValida) {
+      console.log('Error: Contraseña inválida');
       return res.status(401).json({
         message: 'Credenciales inválidas'
       });
     }
     
     // Crear token JWT
+    console.log('Generando token JWT...');
     const token = jwt.sign(
       { 
         id: usuario.id,
@@ -56,9 +66,7 @@ exports.login = async (req, res) => {
       { expiresIn: '12h' }
     );
     
-    // Actualizar último login
-    await usuario.update({ ultimo_login: new Date() });
-    
+    console.log('Login exitoso, enviando respuesta...');
     // Enviar respuesta
     return res.status(200).json({
       message: 'Inicio de sesión exitoso',
@@ -66,7 +74,7 @@ exports.login = async (req, res) => {
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
-        correo: usuario.correo,
+        email: usuario.email,
         rol: usuario.rol
       }
     });
@@ -83,7 +91,6 @@ exports.login = async (req, res) => {
 // Verificar token
 exports.verificarToken = async (req, res) => {
   try {
-    // El usuario viene del middleware de autenticación
     const usuario = req.user;
     
     if (!usuario) {
@@ -100,64 +107,10 @@ exports.verificarToken = async (req, res) => {
         rol: usuario.rol
       }
     });
-    
   } catch (error) {
     console.error('Error al verificar token:', error);
     return res.status(500).json({
-      message: 'Error al procesar la solicitud',
-      error: error.message
-    });
-  }
-};
-
-// Cambiar contraseña
-exports.cambiarPassword = async (req, res) => {
-  try {
-    const { passwordActual, passwordNueva } = req.body;
-    const userId = req.user.id;
-    
-    // Validar entradas
-    if (!passwordActual || !passwordNueva) {
-      return res.status(400).json({
-        message: 'Se requiere la contraseña actual y la nueva'
-      });
-    }
-    
-    // Buscar usuario
-    const usuario = await Usuario.findByPk(userId);
-    
-    if (!usuario) {
-      return res.status(404).json({
-        message: 'Usuario no encontrado'
-      });
-    }
-    
-    // Verificar contraseña actual
-    const passwordEsValida = await bcrypt.compare(passwordActual, usuario.password);
-    
-    if (!passwordEsValida) {
-      return res.status(401).json({
-        message: 'La contraseña actual es incorrecta'
-      });
-    }
-    
-    // Hashear y actualizar nueva contraseña
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(passwordNueva, salt);
-    
-    await usuario.update({ 
-      password: passwordHash,
-      password_actualizada: new Date()
-    });
-    
-    return res.status(200).json({
-      message: 'Contraseña actualizada correctamente'
-    });
-    
-  } catch (error) {
-    console.error('Error al cambiar contraseña:', error);
-    return res.status(500).json({
-      message: 'Error al procesar la solicitud',
+      message: 'Error al verificar el token',
       error: error.message
     });
   }

@@ -15,6 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rutas API
+app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/productos', require('./routes/producto.routes'));
 app.use('/api/ventas', require('./routes/venta.routes'));
 app.use('/api/compras', require('./routes/compra.routes'));
@@ -65,4 +66,4 @@ const gracefulShutdown = () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-module.exports = app;
+module

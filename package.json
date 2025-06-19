@@ -4,7 +4,7 @@
   "description": "Sistema de Gestión para Refaccionaria Automotriz",
   "main": "src/backend/server.js",
   "scripts": {
-    "start": "node src/backend/server.js",
+    "start": "node src/backend/start.js",
     "dev": "nodemon src/backend/server.js",
     "test": "jest",
     "test:backend": "jest src/backend/__tests__",
@@ -15,7 +15,8 @@
     "test:basic": "jest src/backend/__tests__/very-basic.test.js",
     "test:coverage": "jest --coverage",
     "client": "cd src/frontend && cross-env PORT=3001 npm start",
-    "dev:full": "concurrently \"npm run dev\" \"npm run client\""
+    "dev:full": "concurrently \"npm run dev\" \"npm run client\"",
+    "db:seed": "node src/database/seeders/admin-seeder.js"
   },
   "keywords": [
     "refaccionaria",
@@ -26,6 +27,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -9,9 +9,6 @@ import {
   Heading,
   Input,
   Stack,
-  Image,
-  Text,
-  FormErrorMessage,
   useToast,
   InputGroup,
   InputRightElement,
@@ -20,116 +17,106 @@ import {
   AlertIcon
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import axios from 'axios';
-import { setAuthToken } from '../utils/auth';
+import authService from '../services/auth.service';
+import { isAuthenticated } from '../utils/auth';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!email) {
-      newErrors.email = 'El correo electrónico es obligatorio';
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    // Si ya está autenticado, redirigir al dashboard
+    if (isAuthenticated()) {
+      navigate('/');
     }
-    
-    if (!password) {
-      newErrors.password = 'La contraseña es obligatoria';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  }, [navigate]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
     setLoading(true);
-    setLoginError('');
-    
+    setError('');
+
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password
-      });
-      
-      // Guardar el token de autenticación
-      setAuthToken(response.data.token);
+      const data = await authService.login(formData.email, formData.password);
       
       // Mostrar mensaje de éxito
       toast({
         title: '¡Bienvenido!',
-        description: 'Has iniciado sesión correctamente',
+        description: `Sesión iniciada correctamente`,
         status: 'success',
-        duration: 3000,
+        duration: 2000,
         isClosable: true,
       });
+
+      // Redirigir después de un breve delay
+      setTimeout(() => {
+        // Redirigir a la página original o al dashboard
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
+      }, 500);
       
-      // Redirigir al dashboard
-      navigate('/');
-    } catch (error) {
-      console.error('Error de inicio de sesión:', error);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Error al iniciar sesión';
+      setError(message);
       
-      // Mostrar mensaje de error
-      setLoginError(
-        error.response?.data?.message || 
-        'Error al iniciar sesión. Compruebe sus credenciales.'
-      );
+      toast({
+        title: 'Error',
+        description: message,
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
-    <Stack minH={'100vh'} direction={{ base: 'column', md: 'row' }}>
-      <Flex flex={1}>
-        <Image
-          alt={'Login Image'}
-          objectFit={'cover'}
-          src={'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1974&auto=format&fit=crop'}
-        />
-      </Flex>
-      <Flex p={8} flex={1} align={'center'} justify={'center'}>
-        <Stack spacing={6} w={'full'} maxW={'md'}>
-          <Heading fontSize={'2xl'}>Sistema de Gestión para Refaccionaria</Heading>
-          
-          {loginError && (
-            <Alert status="error">
-              <AlertIcon />
-              {loginError}
-            </Alert>
-          )}
-          
-          <Box as="form" onSubmit={handleSubmit}>
+    <Flex minH="100vh" align="center" justify="center" bg="gray.50">
+      <Stack spacing={8} mx="auto" maxW="lg" py={12} px={6}>
+        <Stack align="center">
+          <Heading fontSize="4xl">Iniciar Sesión</Heading>
+        </Stack>
+        <Box rounded="lg" bg="white" boxShadow="lg" p={8}>
+          <form onSubmit={handleSubmit}>
             <Stack spacing={4}>
-              <FormControl id="email" isInvalid={!!errors.email}>
-                <FormLabel>Correo electrónico</FormLabel>
-                <Input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+              <FormControl id="email" isRequired>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  autoComplete="email"
                 />
-                <FormErrorMessage>{errors.email}</FormErrorMessage>
               </FormControl>
-              
-              <FormControl id="password" isInvalid={!!errors.password}>
+
+              <FormControl id="password" isRequired>
                 <FormLabel>Contraseña</FormLabel>
                 <InputGroup>
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    autoComplete="current-password"
                   />
                   <InputRightElement>
                     <IconButton
@@ -137,34 +124,33 @@ const Login = () => {
                       icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                       onClick={() => setShowPassword(!showPassword)}
                       variant="ghost"
-                      size="sm"
                     />
                   </InputRightElement>
                 </InputGroup>
-                <FormErrorMessage>{errors.password}</FormErrorMessage>
               </FormControl>
-              
-              <Stack spacing={6}>
-                <Button
-                  type="submit"
-                  colorScheme={'blue'}
-                  variant={'solid'}
-                  isLoading={loading}
-                  loadingText="Iniciando sesión"
-                >
-                  Iniciar sesión
-                </Button>
-                
-                <Text align={'center'} fontSize="sm" color="gray.500">
-                  Para propósitos de demostración, use:<br />
-                  admin@example.com / admin123
-                </Text>
-              </Stack>
+
+              {error && (
+                <Alert status="error">
+                  <AlertIcon />
+                  {error}
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                colorScheme="blue"
+                size="lg"
+                fontSize="md"
+                isLoading={loading}
+                loadingText="Iniciando sesión..."
+              >
+                Iniciar Sesión
+              </Button>
             </Stack>
-          </Box>
-        </Stack>
-      </Flex>
-    </Stack>
+          </form>
+        </Box>
+      </Stack>
+    </Flex>
   );
 };
 
