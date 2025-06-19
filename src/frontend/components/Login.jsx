@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import authService from '../services/auth.service';
-import { isAuthenticated } from '../utils/auth';
+import { setAuthToken, isAuthenticated } from '../utils/auth';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,20 +33,13 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    // Si ya está autenticado, redirigir al dashboard
-    if (isAuthenticated()) {
-      navigate('/');
-    }
-  }, [navigate]);
-
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,28 +47,42 @@ const Login = () => {
     setError('');
 
     try {
-      const data = await authService.login(formData.email, formData.password);
+      const response = await authService.login(formData.email, formData.password);
+      console.log('Respuesta del login:', response);
       
+      const { token, usuario } = response;
+      
+      if (!token) {
+        throw new Error('No se recibió el token de autenticación');
+      }
+
+      // Guardar el token
+      setAuthToken(token);
+      
+      // Verificar que el token se guardó correctamente
+      if (!isAuthenticated()) {
+        throw new Error('Error al guardar el token de autenticación');
+      }
+
       // Mostrar mensaje de éxito
       toast({
         title: '¡Bienvenido!',
-        description: `Sesión iniciada correctamente`,
+        description: `Hola ${usuario?.nombre || ''}! Has iniciado sesión correctamente.`,
         status: 'success',
         duration: 2000,
         isClosable: true,
       });
 
-      // Redirigir después de un breve delay
-      setTimeout(() => {
-        // Redirigir a la página original o al dashboard
-        const from = location.state?.from?.pathname || '/';
-        navigate(from, { replace: true });
-      }, 500);
-      
+      // Redirigir
+      const from = location.state?.from?.pathname || '/';
+      console.log('Redirigiendo a:', from);
+      navigate(from, { replace: true });
+
     } catch (err) {
-      const message = err.response?.data?.message || 'Error al iniciar sesión';
-      setError(message);
+      console.error('Error en el login:', err);
+      const message = err.response?.data?.message || err.message || 'Error al iniciar sesión';
       
+      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -87,6 +94,14 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Si ya está autenticado, redirigir inmediatamente
+  useEffect(() => {
+    if (isAuthenticated()) {
+      console.log('Usuario ya autenticado, redirigiendo...');
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <Flex minH="100vh" align="center" justify="center" bg="gray.50">
@@ -140,7 +155,6 @@ const Login = () => {
                 type="submit"
                 colorScheme="blue"
                 size="lg"
-                fontSize="md"
                 isLoading={loading}
                 loadingText="Iniciando sesión..."
               >

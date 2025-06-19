@@ -183,8 +183,8 @@ const MainLayout = () => {
         </Collapse>
       </Box>
 
-      <Box pt={'60px'}>
-        <Outlet />
+      <Box as="main" p={4} pt={'60px'}>
+        <Outlet /> {/* Esto renderiza las rutas anidadas */}
       </Box>
     </Box>
   );

@@ -2,12 +2,15 @@ import React from 'react';
 import {
   ChakraProvider,
   Box,
-  Flex,
-  VStack,
-  Grid,
   theme
 } from '@chakra-ui/react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { 
+  BrowserRouter, 
+  Routes, 
+  Route, 
+  Navigate,
+  createRoutesFromElements
+} from 'react-router-dom';
 import { isAuthenticated } from './utils/auth';
 
 // Layouts
@@ -16,7 +19,7 @@ import MainLayout from './layouts/MainLayout';
 // Components
 import Dashboard from './components/Dashboard';
 import PuntoVenta from './components/PuntoVenta';
-import Login from './components/Login'; // Ya está apuntando al Login correcto
+import Login from './components/Login';
 import ClientesList from './components/ClientesList';
 import ClienteDetalle from './components/ClienteDetalle';
 import ClienteHistorial from './components/ClienteHistorial';
@@ -24,47 +27,53 @@ import DevolucionesList from './components/DevolucionesList';
 import DevolucionForm from './components/DevolucionForm';
 import DevolucionDetalle from './components/DevolucionDetalle';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" />;
-  }
-  return children;
-};
-
-function App() {
+const App = () => {
   return (
     <ChakraProvider theme={theme}>
-      <Router>
+      <BrowserRouter>
         <Box minH="100vh">
           <Routes>
-            {/* Ruta de login pública */}
-            <Route path="/login" element={
-              isAuthenticated() ? <Navigate to="/" /> : <Login />
-            } />
-            
-            {/* Rutas protegidas dentro del layout principal */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }>
+            {/* Ruta pública de login */}
+            <Route 
+              path="/login" 
+              element={isAuthenticated() ? <Navigate to="/" replace /> : <Login />}
+            />
+
+            {/* Rutas protegidas */}
+            <Route
+              path="/"
+              element={!isAuthenticated() ? <Navigate to="/login" replace /> : <MainLayout />}
+            >
+              {/* Dashboard como ruta principal */}
               <Route index element={<Dashboard />} />
+
+              {/* Rutas de punto de venta */}
               <Route path="punto-venta" element={<PuntoVenta />} />
-              <Route path="clientes" element={<ClientesList />} />
-              <Route path="clientes/:id" element={<ClienteDetalle />} />
-              <Route path="clientes/:id/historial" element={<ClienteHistorial />} />
-              <Route path="devoluciones" element={<DevolucionesList />} />
-              <Route path="devoluciones/nueva" element={<DevolucionForm />} />
-              <Route path="devoluciones/:id" element={<DevolucionDetalle />} />
-              {/* Redirigir rutas no encontradas al dashboard */}
-              <Route path="*" element={<Navigate to="/" />} />
+
+              {/* Rutas de clientes */}
+              <Route path="clientes">
+                <Route index element={<ClientesList />} />
+                <Route path=":id">
+                  <Route index element={<ClienteDetalle />} />
+                  <Route path="historial" element={<ClienteHistorial />} />
+                </Route>
+              </Route>
+
+              {/* Rutas de devoluciones */}
+              <Route path="devoluciones">
+                <Route index element={<DevolucionesList />} />
+                <Route path="nueva" element={<DevolucionForm />} />
+                <Route path=":id" element={<DevolucionDetalle />} />
+              </Route>
+
+              {/* Redireccionar rutas no encontradas al dashboard */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
         </Box>
-      </Router>
+      </BrowserRouter>
     </ChakraProvider>
   );
-}
+};
 
 export default App;
