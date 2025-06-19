@@ -26,6 +26,8 @@ import ClienteHistorial from './components/ClienteHistorial';
 import DevolucionesList from './components/DevolucionesList';
 import DevolucionForm from './components/DevolucionForm';
 import DevolucionDetalle from './components/DevolucionDetalle';
+import GestionDescuentos from './components/GestionDescuentos';
+import GestionProductos from './pages/GestionProductos';
 
 const App = () => {
   return (
@@ -64,7 +66,11 @@ const App = () => {
                 <Route index element={<DevolucionesList />} />
                 <Route path="nueva" element={<DevolucionForm />} />
                 <Route path=":id" element={<DevolucionDetalle />} />
-              </Route>
+              </Route>              {/* Rutas de descuentos */}
+              <Route path="descuentos" element={<GestionDescuentos />} />
+
+              {/* Rutas de productos */}
+              <Route path="productos" element={<GestionProductos />} />
 
               {/* Redireccionar rutas no encontradas al dashboard */}
               <Route path="*" element={<Navigate to="/" replace />} />

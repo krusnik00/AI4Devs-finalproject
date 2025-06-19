@@ -1,16 +1,15 @@
 const { Sequelize } = require('sequelize');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const path = require('path');
 
 // Crear instancia de Sequelize con SQLite para desarrollo
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: __dirname + '/../database.sqlite',
-  logging: process.env.NODE_ENV === 'development' ? console.log : false
+  storage: path.join(__dirname, '../database.sqlite'),
+  logging: false,
+  define: {
+    // Desactivar las restricciones de clave foránea para SQLite
+    foreignKeys: false
+  }
 });
 
-module.exports = {
-  sequelize,
-  Sequelize
-};
+module.exports = sequelize;

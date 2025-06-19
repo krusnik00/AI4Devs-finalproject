@@ -1,11 +1,24 @@
-const { sequelize } = require('./config/database');
+const sequelize = require('./config/database');
 const Usuario = require('./models/usuario.model');
+const Descuento = require('./models/descuento.model');
 
 async function initializeDatabase() {
     try {
         // Sincronizar modelos con la base de datos
         console.log('Sincronizando base de datos...');
-        await sequelize.sync({ force: true });
+        
+        // Eliminar la base de datos existente
+        console.log('Eliminando base de datos existente...');
+        try {
+            await sequelize.drop();
+            console.log('Base de datos eliminada.');
+        } catch (dropError) {
+            console.log('Error al eliminar base de datos (puede ser normal si no existía):', dropError.message);
+        }
+
+        // Sincronizar todos los modelos
+        console.log('Creando tablas...');
+        await sequelize.sync({ force: false });
         console.log('Base de datos sincronizada.');
 
         // Buscar si ya existe el usuario administrador
@@ -39,9 +52,35 @@ async function initializeDatabase() {
             console.log('\nUsuario administrador ya existe');
         }
 
+        // Crear algunos descuentos de ejemplo
+        await Descuento.create({
+            nombre: 'Descuento de Bienvenida',
+            descripcion: '10% de descuento en tu primera compra',
+            tipo: 'porcentaje',
+            valor: 10,
+            fecha_inicio: new Date(),
+            fecha_fin: new Date(2026, 11, 31),
+            minimo_compra: 100,
+            estado: 'activo'
+        });
+
+        await Descuento.create({
+            nombre: 'Descuento Fijo',
+            descripcion: '$50 de descuento en compras mayores a $500',
+            tipo: 'monto_fijo',
+            valor: 50,
+            fecha_inicio: new Date(),
+            fecha_fin: new Date(2026, 11, 31),
+            minimo_compra: 500,
+            estado: 'activo'
+        });
+
+        console.log('Datos iniciales creados correctamente.');
+        console.log('Base de datos inicializada exitosamente.');
+        process.exit(0);
     } catch (error) {
         console.error('Error al inicializar la base de datos:', error);
-        throw error; // Propagar el error para que sea manejado por el llamador
+        process.exit(1);
     }
 }
 

@@ -1,5 +1,6 @@
 const { Venta, DetalleVenta, Producto, Cliente, Usuario, sequelize } = require('../models');
 const { generateTicketPDF } = require('../services/comprobante.service');
+const descuentoService = require('../services/descuento.service');
 
 // Crear una nueva venta
 exports.crearVenta = async (req, res) => {
@@ -13,11 +14,27 @@ exports.crearVenta = async (req, res) => {
       subtotal,
       impuestos,
       total,
-      productos
+      productos,
+      descuento_id
     } = req.body;
     
     // Obtener el ID del usuario actual del token
     const usuario_id = req.user.id;
+
+    // Calcular descuento si aplica
+    let descuentoAplicado = 0;
+    if (descuento_id) {
+      const ventaData = {
+        subtotal,
+        productos,
+        cliente: await Cliente.findByPk(cliente_id)
+      };
+      const resultado = await descuentoService.calcularDescuento(ventaData, [{ id: descuento_id }]);
+      if (resultado.descuento) {
+        descuentoAplicado = resultado.valor;
+        await descuentoService.registrarUsoDescuento(descuento_id);
+      }
+    }
     
     // Validar que hay productos
     if (!productos || productos.length === 0) {

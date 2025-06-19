@@ -1,4 +1,4 @@
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 
 // Importar modelos
 const Usuario = require('./usuario.model');
@@ -15,6 +15,7 @@ const ProductoProveedor = require('./producto-proveedor.model');
 const AjusteInventario = require('./ajuste-inventario.model');
 const Devolucion = require('./devolucion.model');
 const DetalleDevolucion = require('./detalle-devolucion.model');
+const Descuento = require('./descuento.model');
 
 // Definir relaciones
 
@@ -36,16 +37,20 @@ Proveedor.hasMany(Compra, { foreignKey: 'proveedor_id', as: 'compras' });
 Proveedor.belongsToMany(Producto, { through: ProductoProveedor, foreignKey: 'proveedor_id', as: 'productos' });
 
 // Relaciones de Cliente
-Cliente.hasMany(Venta, { foreignKey: 'cliente_id', as: 'ventas' });
+Cliente.hasMany(Venta, { foreignKey: 'cliente_id', as: 'ventasCliente' });
 
 // Relaciones de Usuario
-Usuario.hasMany(Venta, { foreignKey: 'usuario_id', as: 'ventas' });
+Usuario.hasMany(Venta, { foreignKey: 'usuario_id', as: 'ventasUsuario' });
 Usuario.hasMany(Compra, { foreignKey: 'usuario_id', as: 'compras' });
 
 // Relaciones de Venta
-Venta.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente' });
-Venta.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
-Venta.hasMany(DetalleVenta, { foreignKey: 'venta_id', as: 'detalles', onDelete: 'CASCADE' });
+Venta.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'clienteVenta' });
+Venta.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuarioVenta' });
+Venta.belongsTo(Descuento, { foreignKey: 'descuento_id', as: 'descuentoVenta' });
+Venta.hasMany(DetalleVenta, { foreignKey: 'venta_id', as: 'detalles' });
+
+// Relaciones de Descuento
+Descuento.hasMany(Venta, { foreignKey: 'descuento_id', as: 'ventasConDescuento' });
 
 // Relaciones de DetalleVenta
 DetalleVenta.belongsTo(Venta, { foreignKey: 'venta_id', as: 'venta' });

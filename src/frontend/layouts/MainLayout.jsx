@@ -40,11 +40,20 @@ import {
   CloseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  ExternalLinkIcon,
   BellIcon,
-  SettingsIcon
+  SettingsIcon,
 } from '@chakra-ui/icons';
-import { FaHome, FaShoppingCart, FaCar, FaBoxes, FaUsers, FaChartBar, FaFileInvoiceDollar, FaTools } from 'react-icons/fa';
+import {
+  FaHome,
+  FaShoppingCart,
+  FaBoxes,
+  FaUsers,
+  FaChartBar,
+  FaCar,
+  FaTools,
+  FaFileInvoiceDollar,
+  FaPercent,
+} from 'react-icons/fa';
 import { removeAuthToken } from '../utils/auth';
 import { devolucionService } from '../services/devolucion.service';
 
@@ -402,6 +411,12 @@ const NAV_ITEMS = [
         subLabel: 'Consultar ventas realizadas',
         href: '/ventas',
         icon: FaFileInvoiceDollar,
+      },
+      {
+        label: 'Descuentos',
+        subLabel: 'Gestión de descuentos y promociones',
+        href: '/descuentos',
+        icon: FaPercent,
       },
       {
         label: 'Devoluciones',

@@ -20,54 +20,47 @@ import {
   Tr,
   Th,
   Td,
-  Badge,
-  Divider,
-  Select,
+  Card,
+  CardBody,
   FormControl,
   FormLabel,
+  Select,
+  NumberInput,
+  NumberInputField,
+  Badge,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
-  ModalFooter,
   ModalBody,
+  ModalFooter,
   ModalCloseButton,
   useDisclosure,
   useToast,
-  NumberInput,
-  NumberInputField,
-  Image,
-  Card,
-  CardBody,
-  Spinner,
   Drawer,
   DrawerBody,
-  DrawerFooter,
   DrawerHeader,
   DrawerOverlay,
   DrawerContent,
-  DrawerCloseButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Tooltip,
-  useColorModeValue
+  DrawerFooter,
+  Image,
+  Divider,
 } from '@chakra-ui/react';
-import {
-  SearchIcon,
-  DeleteIcon,
-  AddIcon,
-  MinusIcon,
-  CheckIcon,
+import { 
+  SearchIcon, 
+  AddIcon, 
+  MinusIcon, 
+  DeleteIcon, 
+  CheckIcon, 
   CloseIcon,
   ChevronDownIcon,
-  WarningIcon
+  WarningIcon 
 } from '@chakra-ui/icons';
-import { FaReceipt, FaBarcode } from 'react-icons/fa';
+import { FaReceipt, FaBarcode, FaPercent } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { ventaService } from '../services/venta.service';
 import { productoService } from '../services/producto.service';
+import { descuentoService } from '../services/descuento.service';
 import ClienteSelector from './ClienteSelector';
 
 const PuntoVenta = () => {
@@ -88,6 +81,12 @@ const PuntoVenta = () => {
   const [impuestos, setImpuestos] = useState(0);
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState({});
+
+  // Nuevos estados para descuentos
+  const [descuentos, setDescuentos] = useState([]);
+  const [descuentoSeleccionado, setDescuentoSeleccionado] = useState(null);
+  const [descuentoAplicado, setDescuentoAplicado] = useState(0);
+  const [cargandoDescuentos, setCargandoDescuentos] = useState(false);
   
   // Referencias y timeouts
   const barcodeScannerTimeout = useRef(null);
@@ -100,6 +99,7 @@ const PuntoVenta = () => {
   const { isOpen: isConfirmModalOpen, onOpen: onConfirmModalOpen, onClose: onConfirmModalClose } = useDisclosure();
   const { isOpen: isCompletedModalOpen, onOpen: onCompletedModalOpen, onClose: onCompletedModalClose } = useDisclosure();
   const { isOpen: isProductModalOpen, onOpen: onProductModalOpen, onClose: onProductModalClose } = useDisclosure();
+  const { isOpen: isDescuentosOpen, onOpen: onDescuentosOpen, onClose: onDescuentosClose } = useDisclosure();
   
   // Estado para guardar la venta completada
   const [ventaCompletada, setVentaCompletada] = useState(null);
@@ -156,23 +156,25 @@ const PuntoVenta = () => {
   // Efecto para calcular los totales
   useEffect(() => {
     calcularTotales();
-  }, [carrito]);
+  }, [carrito, descuentoAplicado]);
   
   // Calcular subtotal, impuestos y total
-  const calcularTotales = () => {
+  const calcularTotales = (descuento = descuentoAplicado) => {
     const nuevoSubtotal = carrito.reduce((acc, item) => 
-      acc + (item.precio_unitario * item.cantidad), 0);
+      acc + (item.precio_unitario * item.cantidad), 0
+    );
     
-    const nuevoImpuestos = nuevoSubtotal * TASA_IMPUESTO;
-    const nuevoTotal = nuevoSubtotal + nuevoImpuestos;
+    const subtotalConDescuento = Math.max(0, nuevoSubtotal - descuento);
+    const nuevosImpuestos = subtotalConDescuento * TASA_IMPUESTO;
     
     setSubtotal(nuevoSubtotal);
-    setImpuestos(nuevoImpuestos);
-    setTotal(nuevoTotal);
+    setDescuentoAplicado(descuento);
+    setImpuestos(nuevosImpuestos);
+    setTotal(subtotalConDescuento + nuevosImpuestos);
     
     // Calcular cambio si hay cantidad pagada
     if (cantidadPagada) {
-      const nuevoCambio = parseFloat(cantidadPagada) - nuevoTotal;
+      const nuevoCambio = parseFloat(cantidadPagada) - subtotalConDescuento - nuevosImpuestos;
       setCambio(nuevoCambio > 0 ? nuevoCambio : 0);
     }
   };
@@ -352,6 +354,7 @@ const PuntoVenta = () => {
       setMetodoPago('efectivo');
       setCantidadPagada('');
       setCambio(0);
+      setDescuento(0);
       setErrorValidacion({});
     }
   };
@@ -468,12 +471,146 @@ const PuntoVenta = () => {
     }
   };
   
-  // Handle input de búsqueda con tecla Enter
+  // Handle input de búsqueda with tecla Enter
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
       buscarProductos();
     }
   };
+  
+  // Buscar descuentos
+  const buscarDescuentos = async (query) => {
+    if (!query.trim()) {
+      setDescuentos([]);
+      return;
+    }
+    
+    setCargandoDescuentos(true);
+    try {
+      const response = await descuentoService.buscarDescuentos(query);
+      setDescuentos(response);
+    } catch (error) {
+      console.error('Error al buscar descuentos:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron buscar descuentos",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setCargandoDescuentos(false);
+    }
+  };
+  
+  // Cargar descuentos disponibles
+  const cargarDescuentos = async () => {
+    try {
+      setCargandoDescuentos(true);
+      const data = await descuentoService.obtenerDescuentos();
+      setDescuentos(data.filter(d => d.estado === 'activo'));
+    } catch (error) {
+      console.error('Error al cargar descuentos:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los descuentos disponibles",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setCargandoDescuentos(false);
+    }
+  };
+
+  // Validar y aplicar descuento
+  const aplicarDescuento = async (descuentoId) => {
+    try {
+      if (!descuentoId) {
+        setDescuentoSeleccionado(null);
+        setDescuentoAplicado(0);
+        calcularTotales();
+        return;
+      }
+
+      const ventaData = {
+        subtotal,
+        productos: carrito,
+        cliente
+      };
+
+      const resultado = await descuentoService.validarDescuento(descuentoId, ventaData);
+      
+      if (resultado.descuento) {
+        setDescuentoSeleccionado(resultado.descuento);
+        setDescuentoAplicado(resultado.valor);
+        calcularTotales(resultado.valor);
+        
+        toast({
+          title: "Descuento aplicado",
+          description: `Se aplicó un descuento de $${resultado.valor.toFixed(2)}`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error al aplicar descuento:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "No se pudo aplicar el descuento",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      setDescuentoSeleccionado(null);
+      setDescuentoAplicado(0);
+    }
+  };
+  
+  // Cargar descuentos al montar el componente
+  useEffect(() => {
+    cargarDescuentos();
+  }, []);
+  
+  // Configurar el enfoque inicial y el detector de escáner de códigos de barras
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && barcodeBuffer.current.length > 3) {
+        buscarPorCodigoBarras(barcodeBuffer.current);
+        barcodeBuffer.current = '';
+        e.preventDefault();
+        return;
+      }
+      
+      if (barcodeScannerTimeout.current) {
+        clearTimeout(barcodeScannerTimeout.current);
+      }
+      
+      barcodeScannerTimeout.current = setTimeout(() => {
+        barcodeBuffer.current = '';
+      }, 100);
+      
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      
+      if (/[\d\w]/.test(e.key) && e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (barcodeScannerTimeout.current) {
+        clearTimeout(barcodeScannerTimeout.current);
+      }
+    };
+  }, []);
   
   // Renders
   return (
@@ -650,7 +787,40 @@ const PuntoVenta = () => {
                   <option value="credito">Crédito</option>
                 </Select>
               </FormControl>
-              
+
+              {/* Selector de Descuentos */}
+              <Box>
+                <FormControl>
+                  <FormLabel>Descuento</FormLabel>
+                  <Select
+                    value={descuentoSeleccionado?.id || ''}
+                    onChange={(e) => aplicarDescuento(e.target.value)}
+                    icon={<FaPercent />}
+                  >
+                    <option value="">Sin descuento</option>
+                    {descuentos.map(descuento => (
+                      <option key={descuento.id} value={descuento.id}>
+                        {descuento.nombre} - {descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${descuento.valor}`}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {/* Resumen de descuento aplicado */}
+              {descuentoAplicado > 0 && (
+                <Box p={3} bg="green.50" borderRadius="md">
+                  <VStack align="stretch" spacing={1}>
+                    <Text fontWeight="bold" color="green.600">
+                      Descuento aplicado: ${descuentoAplicado.toFixed(2)}
+                    </Text>
+                    <Text fontSize="sm" color="green.600">
+                      {descuentoSeleccionado.nombre}
+                    </Text>
+                  </VStack>
+                </Box>
+              )}
+
               {/* Cantidad recibida (solo para efectivo) */}
               {metodoPago === 'efectivo' && (
                 <FormControl isInvalid={!!errorValidacion.pago}>
@@ -701,6 +871,10 @@ const PuntoVenta = () => {
                 <Flex justify="space-between">
                   <Text>IVA ({(TASA_IMPUESTO * 100).toFixed(0)}%):</Text>
                   <Text>${impuestos.toFixed(2)}</Text>
+                </Flex>
+                <Flex justify="space-between">
+                  <Text>Descuento:</Text>
+                  <Text color="green.500">-${descuentoAplicado.toFixed(2)}</Text>
                 </Flex>
                 <Divider />
                 <Flex justify="space-between" fontWeight="bold" fontSize="xl">
@@ -826,6 +1000,10 @@ const PuntoVenta = () => {
                 <HStack justifyContent="space-between">
                   <Text>IVA ({(TASA_IMPUESTO * 100).toFixed(0)}%):</Text>
                   <Text>${impuestos.toFixed(2)}</Text>
+                </HStack>
+                <HStack justifyContent="space-between">
+                  <Text>Descuento:</Text>
+                  <Text color="green.500">-${descuentoAplicado.toFixed(2)}</Text>
                 </HStack>
                 <HStack justifyContent="space-between" fontWeight="bold">
                   <Text>Total:</Text>
@@ -1013,6 +1191,70 @@ const PuntoVenta = () => {
               Agregar al Carrito
             </Button>
             <Button onClick={onProductModalClose}>Cerrar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      
+      {/* Modal de descuentos */}
+      <Modal isOpen={isDescuentosOpen} onClose={onDescuentosClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Descuentos Disponibles</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <VStack align="stretch" spacing={4}>
+              {/* Búsqueda de descuentos */}
+              <FormControl>
+                <FormLabel>Buscar descuento</FormLabel>
+                <InputGroup>
+                  <InputLeftElement pointerEvents='none'>
+                    <SearchIcon color='gray.300' />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Buscar por nombre o código..."
+                    onChange={(e) => buscarDescuentos(e.target.value)}
+                  />
+                </InputGroup>
+              </FormControl>
+              
+              {/* Lista de descuentos */}
+              {cargandoDescuentos ? (
+                <Text textAlign="center" py={4} color="gray.500">Cargando descuentos...</Text>
+              ) : (
+                <VStack spacing={3} align="stretch">
+                  {descuentos.length === 0 ? (
+                    <Text textAlign="center" py={4} color="gray.500">No se encontraron descuentos</Text>
+                  ) : (
+                    descuentos.map((descuento) => (
+                      <Card key={descuento.id} variant="outline" cursor="pointer" _hover={{ shadow: 'md' }}>
+                        <CardBody>
+                          <Flex justify="space-between" align="center">
+                            <Box>
+                              <Text fontWeight="bold">{descuento.nombre}</Text>
+                              <Text fontSize="sm" color="gray.500">
+                                Cód: {descuento.codigo}
+                              </Text>
+                            </Box>
+                            <Button
+                              colorScheme="green"
+                              onClick={() => aplicarDescuento(descuento)}
+                            >
+                              Aplicar
+                            </Button>
+                          </Flex>
+                        </CardBody>
+                      </Card>
+                    ))
+                  )}
+                </VStack>
+              )}
+            </VStack>
+          </ModalBody>
+          
+          <ModalFooter>
+            <Button variant="outline" mr={3} onClick={onDescuentosClose}>
+              Cerrar
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

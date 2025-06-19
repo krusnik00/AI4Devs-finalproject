@@ -1,5 +1,9 @@
 const Producto = require('../models/producto.model');
+const Categoria = require('../models/categoria.model');
+const Marca = require('../models/marca.model');
 const { Op } = require('sequelize');
+const { generateSKU, generateProductCode } = require('../utils/sku-generator');
+const upload = require('../utils/image-upload');
 
 // Obtener todos los productos
 exports.getAllProductos = async (req, res) => {
@@ -34,11 +38,29 @@ exports.createProducto = async (req, res) => {
       req.body.creado_por = req.user.id;
     }
 
-    // Si no se proporciona un código, generar uno simple
+    // Generar código único si no se proporciona
     if (!req.body.codigo) {
-      const count = await Producto.count();
-      const timestamp = new Date().getTime().toString().slice(-6);
-      req.body.codigo = `PROD-${timestamp}-${count + 1}`;
+      req.body.codigo = generateProductCode();
+    }
+
+    // Generar SKU basado en la categoría y marca
+    const categoria = await Categoria.findByPk(req.body.categoriaId);
+    const marca = await Marca.findByPk(req.body.marcaId);
+    
+    if (!categoria || !marca) {
+      return res.status(400).json({ message: 'Categoría o marca no válida' });
+    }
+
+    req.body.sku = await generateSKU(
+      categoria.nombre,
+      marca.nombre,
+      req.body.modelo_compatible
+    );
+
+    // Procesar imagen si se proporcionó
+    if (req.file) {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      req.body.imagen_url = `${baseUrl}/uploads/productos/${req.file.filename}`;
     }
 
     const nuevoProducto = await Producto.create(req.body);

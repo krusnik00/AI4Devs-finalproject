@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 
 const Producto = sequelize.define('Producto', {
   id: {
@@ -103,7 +103,10 @@ const Producto = sequelize.define('Producto', {
   },
   imagen_url: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    validate: {
+      isUrl: true
+    }
   },
   codigo_barras: {
     type: DataTypes.STRING,
@@ -114,6 +117,19 @@ const Producto = sequelize.define('Producto', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true
+  },
+  status: {
+    type: DataTypes.ENUM('activo', 'inactivo', 'descontinuado'),
+    allowNull: false,
+    defaultValue: 'activo'
+  },
+  fecha_creacion: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  fecha_actualizacion: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   },
   creado_por: {
     type: DataTypes.INTEGER,
@@ -134,6 +150,9 @@ const Producto = sequelize.define('Producto', {
         const timestamp = new Date().getTime().toString().slice(-6);
         producto.sku = `${prefix}-${producto.codigo}-${timestamp}`;
       }
+    },
+    beforeUpdate: (producto) => {
+      producto.fecha_actualizacion = new Date();
     }
   }
 });

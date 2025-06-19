@@ -1,7 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { sequelize } = require('./models');
+const sequelize = require('./config/database');
+
+// Importar modelos
+const Usuario = require('./models/usuario.model');
+const Descuento = require('./models/descuento.model');
+const Venta = require('./models/venta.model');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -18,52 +23,60 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/productos', require('./routes/producto.routes'));
 app.use('/api/ventas', require('./routes/venta.routes'));
-app.use('/api/compras', require('./routes/compra.routes'));
-app.use('/api/proveedores', require('./routes/proveedor.routes'));
-app.use('/api/clientes', require('./routes/cliente.routes'));
-app.use('/api/usuarios', require('./routes/usuario.routes'));
-app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/ajustes-inventario', require('./routes/ajuste-inventario.routes'));
-app.use('/api/alertas-stock', require('./routes/alerta-stock.routes'));
-app.use('/api/devoluciones', require('./routes/devolucion.routes'));
+app.use('/api/descuentos', require('./routes/descuento.routes'));
 
-// Ruta para verificar que el servidor está funcionando
-app.get('/', (req, res) => {
-  res.json({ message: 'API de Sistema de Gestión para Refaccionaria funcionando correctamente' });
-});
-
-// Definir puerto
-const PORT = process.env.PORT || 3000;
-
-// Iniciar servidor
-const server = app.listen(PORT, async () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-    try {
-    await sequelize.authenticate();
-    console.log('Conexión a la base de datos establecida correctamente.');
+// Inicializar base de datos
+const initDatabase = async () => {
+  try {
+    await sequelize.sync({ force: true }); // En producción, usar { force: false }
     
-    // Sincronizar modelos con la base de datos - usando alter: true para actualizar tablas existentes
-    // En producción debe usarse una estrategia de migración en lugar de alter: true
-    await sequelize.sync({ alter: true });
-    console.log('Modelos sincronizados con la base de datos.');
-  } catch (error) {
-    console.error('No se pudo conectar a la base de datos:', error);
-  }
-});
+    // Crear usuario administrador si no existe
+    const adminExists = await Usuario.findOne({ where: { email: 'admin@example.com' } });
+    if (!adminExists) {
+      await Usuario.create({
+        nombre: 'Administrador',
+        email: 'admin@example.com',
+        password: 'admin123',
+        rol: 'admin'
+      });
+    }
 
-const gracefulShutdown = () => {
-  console.log('Recibida señal de apagado, cerrando el servidor http.');
-  server.close(() => {
-    console.log('Servidor http cerrado.');
-    sequelize.close().then(() => {
-      console.log('Conexión de la base de datos cerrada.');
-      process.exit(0);
-    });
-  });
+    // Crear descuentos de ejemplo
+    await Descuento.bulkCreate([
+      {
+        nombre: 'Descuento de Bienvenida',
+        descripcion: '10% de descuento en tu primera compra',
+        tipo: 'porcentaje',
+        valor: 10,
+        fecha_inicio: new Date(),
+        fecha_fin: new Date(2026, 11, 31),
+        minimo_compra: 100,
+        estado: 'activo'
+      },
+      {
+        nombre: 'Descuento Fijo',
+        descripcion: '$50 de descuento en compras mayores a $500',
+        tipo: 'monto_fijo',
+        valor: 50,
+        fecha_inicio: new Date(),
+        fecha_fin: new Date(2026, 11, 31),
+        minimo_compra: 500,
+        estado: 'activo'
+      }
+    ]);
+
+    console.log('Base de datos sincronizada y datos iniciales creados');
+  } catch (error) {
+    console.error('Error al inicializar la base de datos:', error);
+    process.exit(1);
+  }
 };
 
-// Escuchar señales de terminación
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+// Iniciar el servidor
+const PORT = process.env.PORT || 3000;
 
-module
+initDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
+  });
+});

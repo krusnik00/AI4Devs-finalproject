@@ -1,0 +1,24 @@
+{
+  "name": "autoparts-backend",
+  "version": "1.0.0",
+  "description": "Backend para Sistema de Gestión de Refaccionaria",
+  "main": "server.js",
+  "scripts": {
+    "prestart": "npm install && node init-db.js",
+    "start": "node server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^2.0.1",
+    "sequelize": "^6.31.1",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0"
+  }
+}
