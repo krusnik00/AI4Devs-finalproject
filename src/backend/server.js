@@ -35,7 +35,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Iniciar servidor
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
     try {
     await sequelize.authenticate();
@@ -49,5 +49,20 @@ app.listen(PORT, async () => {
     console.error('No se pudo conectar a la base de datos:', error);
   }
 });
+
+const gracefulShutdown = () => {
+  console.log('Recibida señal de apagado, cerrando el servidor http.');
+  server.close(() => {
+    console.log('Servidor http cerrado.');
+    sequelize.close().then(() => {
+      console.log('Conexión de la base de datos cerrada.');
+      process.exit(0);
+    });
+  });
+};
+
+// Escuchar señales de terminación
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 module.exports = app;

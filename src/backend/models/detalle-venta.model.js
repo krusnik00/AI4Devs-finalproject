@@ -40,7 +40,7 @@ const DetalleVenta = sequelize.define('DetalleVenta', {
   }
 }, {
   timestamps: true,
-  tableName: 'detalle_ventas'
+  tableName: 'DetalleVentas'
 });
 
 // Las relaciones se establecerán en un archivo separado
